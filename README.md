@@ -1,0 +1,2 @@
+# GoLink
+Simple link shortener.
