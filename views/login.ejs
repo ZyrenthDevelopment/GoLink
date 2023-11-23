@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="auto">
+
+<head>
+    <script src="/assets/js/color-modes.js"></script>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="GoLink, sign in to access the resource." />
+    <title>Sign in to access the resource</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" />
+
+    <link href="/assets/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <link href="/assets/sign-in.css" rel="stylesheet" />
+</head>
+
+<body class="d-flex align-items-center py-4 bg-body-tertiary">
+    <main class="form-signin w-100 m-auto">
+        <img class="mb-4" src="/assets/default/ZDevGoLink.png" alt="" width="72" height="72" />
+        <h1 class="h3 mb-3 fw-normal" id="loginTitle">
+            Sign in to access the resource
+        </h1>
+
+        <% if ( loginType===0 ) { %>
+        <div class="list-group mb-3">
+            <a href="#" id="loginLink" class="list-group-item list-group-item-action d-flex gap-3 py-3"
+                aria-current="true">
+                <div class="spinner-border text-primary rounded-circle flex-shrink-0 d-none" role="status"
+                    id="loginSpinner">
+                    <span class="visually-hidden">Authenticating...</span>
+                </div>
+                <img src="/assets/default/DefaultAvatar.png" alt="Avatar" width="32" height="32"
+                    class="rounded-circle flex-shrink-0" id="loginAvatar" />
+                <div class="d-flex gap-2 w-100 justify-content-between">
+                    <div>
+                        <h6 class="mb-0" id="loginUsername">Sign in</h6>
+                        <p class="mb-0 opacity-75">This is a restricted resource.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="form-check text-start my-3 d-none">
+            <input class="form-check-input" type="checkbox" value="remember-me" id="rememberLogin" />
+            <label class="form-check-label" for="flexCheckDefault">
+                Automatically redirect next time when authenticated
+            </label>
+        </div>
+        <% } else if ( loginType===1 ) { %>
+            <div class="form-floating">
+                <input type="text" class="form-control" id="oneTimePassword" placeholder="Password"
+                    style="text-security: disc; -webkit-text-security: disc" autocomplete="off" />
+                <label for="floatingPassword">Password</label>
+            </div>
+        <% } %>
+
+        <button class="btn btn-primary w-100 py-2 disabled" id="submitLogin">
+            Continue
+        </button>
+        <p class="mt-5 mb-3 text-body-secondary">&copy; Zyrenth.dev</p>
+    </main>
+    <script src="/assets/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        const loginType = parseInt("<%= loginType %>");
+        const id = "<%= id %>";
+        let access_token = '<%= access_token ?? "" %>';
+
+        if (loginType === 1) {
+            const OTPField = document.getElementById("oneTimePassword");
+            const confirmButton = document.getElementById("submitLogin");
+            const loginTitle = document.getElementById("loginTitle");
+
+            OTPField.addEventListener("input", (e) => {
+                confirmButton.classList.remove("disabled");
+                if (e.target.value.replace(/ /g, "") === "")
+                    confirmButton.classList.add("disabled");
+                else confirmButton.classList.remove("disabled");
+            });
+
+            confirmButton.addEventListener("click", async () => {
+                try {
+                    const req = await fetch("/api/v1/links/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            type: "password",
+                            password: OTPField.value,
+                            id,
+                        }),
+                    });
+
+                    const response = await req.json();
+
+                    if (response.url) location.replace(response.url);
+                    else {
+                        loginTitle.innerText = "Invalid password.";
+                        confirmButton.classList.remove("btn-primary");
+                        confirmButton.classList.add("btn-danger");
+                    }
+                } catch (err) {
+                    loginTitle.innerText = "An error occurred.";
+                    confirmButton.classList.remove("btn-primary");
+                    confirmButton.classList.add("btn-danger");
+                }
+            });
+        } else if (loginType === 0) {
+            const confirmButton = document.getElementById("submitLogin");
+            const loginTitle = document.getElementById("loginTitle");
+
+            const loginLink = document.getElementById("loginLink");
+            const loginAvatar = document.getElementById("loginAvatar");
+            const loginUsername = document.getElementById("loginUsername");
+            const loginSpinner = document.getElementById("loginSpinner");
+
+            console.log(access_token, !access_token);
+            if (!access_token)
+                loginLink.onclick = () => {
+                    loginAvatar.classList.remove("d-none");
+                    loginSpinner.classList.remove("d-none");
+                    loginAvatar.classList.add("d-none");
+
+                    loginUsername.innerText = "Signing in...";
+
+                    const oauth = window.open("/account/login");
+
+                    window.addEventListener("message", async (e) => {
+                        if (
+                            !(
+                                typeof e.data.length === "number" &&
+                                e.data[0] === "oauth_finish"
+                            )
+                        )
+                            return;
+
+                        oauth.close();
+
+                        const token = e.data[1];
+                        access_token = e.data[1];
+
+                        try {
+                            const req = await fetch(
+                                "https://discord.com/api/v10/users/@me",
+                                {
+                                    method: "GET",
+                                    headers: {
+                                        "Content-Type": "application/x-www-form-urlencoded",
+                                        Authorization: `Bearer ${token}`,
+                                    },
+                                }
+                            );
+
+                            const response = await req.json();
+
+                            console.log(response);
+
+                            loginAvatar.src = `https://cdn.discordapp.com/avatars/${response.id}/${response.avatar}.webp?size=4096`;
+                            loginUsername.innerText = response.global_name;
+                            loginAvatar.classList.remove("d-none");
+                            loginSpinner.classList.remove("d-none");
+                            loginSpinner.classList.add("d-none");
+                            loginLink.onclick = () => { };
+                            confirmButton.classList.remove("disabled");
+                        } catch (err) {
+                            loginTitle.innerText = "An error occurred.";
+                            confirmButton.classList.remove("btn-primary");
+                            confirmButton.classList.add("btn-danger");
+                        }
+                    });
+                };
+            else
+                try {
+                    const req = await fetch("https://discord.com/api/v10/users/@me", {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            Authorization: `Bearer ${access_token}`,
+                        },
+                    });
+
+                    const response = await req.json();
+
+                    console.log(response);
+
+                    loginAvatar.src = `https://cdn.discordapp.com/avatars/${response.id}/${response.avatar}.webp?size=4096`;
+                    loginUsername.innerText = response.global_name;
+                    loginAvatar.classList.remove("d-none");
+                    loginSpinner.classList.remove("d-none");
+                    loginSpinner.classList.add("d-none");
+                    loginLink.onclick = () => { };
+                    confirmButton.classList.remove("disabled");
+                } catch (err) {
+                    loginTitle.innerText = "An error occurred.";
+                    confirmButton.classList.remove("btn-primary");
+                    confirmButton.classList.add("btn-danger");
+                }
+
+            confirmButton.addEventListener("click", async () => {
+                try {
+                    const req = await fetch("/api/v1/links/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            type: "discord",
+                            token: access_token,
+                            id,
+                        }),
+                    });
+
+                    const response = await req.json();
+
+                    if (response.url) location.replace(response.url);
+                    else {
+                        loginTitle.innerText = "You don't have access to this GoLink.";
+                        confirmButton.classList.remove("btn-primary");
+                        confirmButton.classList.add("btn-danger");
+                        confirmButton.classList.add("disabled");
+                    }
+                } catch (err) {
+                    loginTitle.innerText = "An error occurred.";
+                    confirmButton.classList.remove("btn-primary");
+                    confirmButton.classList.add("btn-danger");
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

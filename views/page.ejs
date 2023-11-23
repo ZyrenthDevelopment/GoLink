@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="auto">
+
+<head>
+    <script src="/assets/js/color-modes.js"></script>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="GoLink, link sharing made easy." />
+    <title>
+        <%= title %>
+    </title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" />
+
+    <link href="/assets/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <style>
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {
+                font-size: 3.5rem;
+            }
+        }
+
+        .b-example-divider {
+            width: 100%;
+            height: 3rem;
+            background-color: rgba(0, 0, 0, 0.1);
+            border: solid rgba(0, 0, 0, 0.15);
+            border-width: 1px 0;
+            box-shadow: inset 0 0.5em 1.5em rgba(0, 0, 0, 0.1),
+                inset 0 0.125em 0.5em rgba(0, 0, 0, 0.15);
+        }
+
+        .b-example-vr {
+            flex-shrink: 0;
+            width: 1.5rem;
+            height: 100vh;
+        }
+
+        .bi {
+            vertical-align: -0.125em;
+            fill: currentColor;
+        }
+
+        .nav-scroller {
+            position: relative;
+            z-index: 2;
+            height: 2.75rem;
+            overflow-y: hidden;
+        }
+
+        .nav-scroller .nav {
+            display: flex;
+            flex-wrap: nowrap;
+            padding-bottom: 1rem;
+            margin-top: -1px;
+            overflow-x: auto;
+            text-align: center;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .btn-bd-primary {
+            --bd-violet-bg: #712cf9;
+            --bd-violet-rgb: 112.520718, 44.062154, 249.437846;
+
+            --bs-btn-font-weight: 600;
+            --bs-btn-color: var(--bs-white);
+            --bs-btn-bg: var(--bd-violet-bg);
+            --bs-btn-border-color: var(--bd-violet-bg);
+            --bs-btn-hover-color: var(--bs-white);
+            --bs-btn-hover-bg: #6528e0;
+            --bs-btn-hover-border-color: #6528e0;
+            --bs-btn-focus-shadow-rgb: var(--bd-violet-rgb);
+            --bs-btn-active-color: var(--bs-btn-hover-color);
+            --bs-btn-active-bg: #5a23c8;
+            --bs-btn-active-border-color: #5a23c8;
+        }
+
+        .bd-mode-toggle {
+            z-index: 1500;
+        }
+
+        .bd-mode-toggle .dropdown-menu .active .bi {
+            display: block !important;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="container py-4">
+            <header class="pb-3 mb-4 border-bottom">
+                <a href="/" class="d-flex align-items-center text-body-emphasis text-decoration-none">
+                    <span class="fs-4">GoLink</span>
+                </a>
+            </header>
+
+            <div class="p-5 mb-4 bg-body-tertiary rounded-3">
+                <div class="container-fluid py-5">
+                    <h1 class="display-5 fw-bold">
+                        <%= title %>
+                    </h1>
+                    <p class="col-md-8 fs-4">
+                        <%= description %>
+                    </p>
+                </div>
+            </div>
+
+            <div class="row align-items-md-stretch">
+                <div class="col-md-6">
+                    <div class="h-100 p-5 text-bg-dark rounded-3">
+                        <h2>Check out Zyrenth on GitHub</h2>
+                        <p>
+                            This is a side-project made by Zyrenth. These side-projects are open-sourced either at
+                            @Zyrenth or
+                            @ZyrenthDev on GitHub. Feel free to take a look at them or self-host it yourself. Consider
+                            following
+                            @Zyrenth (and @ZyrenthDev) if you like Zyrenth's work.
+                        </p>
+                        <a href="https://github.com/Zyrenth" class="btn btn-light">
+                            @Zyrenth on GitHub
+                        </a>
+                        <a href="https://github.com/ZyrenthDev" class="btn btn-light">
+                            @ZyrenthDev on GitHub
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="h-100 p-5 bg-body-tertiary border rounded-3">
+                        <h2>What is GoLink?</h2>
+                        <p>
+                            GoLink is a side-project made by Zyrenth. This is a completely open-source, self-hostable
+                            link shortener
+                            service that can be used privately. Check out the GitHub repo for more information.
+                        </p>
+                        <a href="https://github.com/ZyrenthDev/GoLink" class="btn btn-primary">
+                            GitHub Repo
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="pt-3 mt-4 text-body-secondary border-top">
+                &copy; Zyrenth.dev
+            </footer>
+        </div>
+    </main>
+    <script src="/assets/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Popout auth
+        if (window.opener) {
+            window.opener.postMessage(['oauth_finish', '<%= access_token ?? "" %>']);
+        }
+    </script>
+</body>
+
+</html>
