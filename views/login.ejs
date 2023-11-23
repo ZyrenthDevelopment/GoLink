@@ -116,7 +116,6 @@
             const loginUsername = document.getElementById("loginUsername");
             const loginSpinner = document.getElementById("loginSpinner");
 
-            console.log(access_token, !access_token);
             if (!access_token)
                 loginLink.onclick = () => {
                     loginAvatar.classList.remove("d-none");
@@ -173,6 +172,12 @@
                 };
             else
                 try {
+                    loginAvatar.classList.remove("d-none");
+                    loginSpinner.classList.remove("d-none");
+                    loginAvatar.classList.add("d-none");
+
+                    loginUsername.innerText = "Signing in...";
+                    
                     const req = await fetch("https://discord.com/api/v10/users/@me", {
                         method: "GET",
                         headers: {

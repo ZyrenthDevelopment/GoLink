@@ -172,9 +172,9 @@ app.get('/:id', (req, res, next) => {
 
     if (link.type === 'none') return res.redirect(link.url);
     else if (link.type === 'discord') {
-        res.render(`${__dirname}/../views/login.ejs`, { loginType: 0, id, access_token: '' });
+        res.render(`${__dirname}/../views/login.ejs`, { loginType: 0, id, access_token: req?.session?.user?.access_token ?? '' });
     } else if (link.type === 'password') {
-        res.render(`${__dirname}/../views/login.ejs`, { loginType: 1, id });
+        res.render(`${__dirname}/../views/login.ejs`, { loginType: 1, id, access_token: '' });
     } else return res.redirect(link.url);
 });
 
@@ -207,6 +207,12 @@ io.use(async (socket, next) => {
     });
 });
 
+
+async function adminOnly(req, res, next) {
+    req['__limitedToAdmins'] = true;
+    next();
+}
+
 // Check if Discord OAuth token is valid
 async function isAuthenticated(req, res, next) {
     const auth_url = `https://discord.com/api/oauth2/authorize?client_id=${process.env['DISCORD_CLIENT_ID']}&redirect_uri=${encodeURIComponent(process.env['DISCORD_REDIRECT_URL'])}&response_type=code&scope=identify`;
@@ -215,8 +221,7 @@ async function isAuthenticated(req, res, next) {
         const profile = await getProfile(req.session.user.access_token);
 
         if (profile === null) return res.redirect(auth_url);
-        // TODO: admin panel
-        // if (!config['admin_users'].includes(profile.id)) return res.redirect(auth_url);
+        if (req['__limitedToAdmins'] && !config['admin_users'].includes(profile.id)) return res.redirect(auth_url);
 
         next();
     } else res.redirect(auth_url);
