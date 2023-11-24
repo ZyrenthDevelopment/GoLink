@@ -131,4 +131,4 @@ dist
 
 # Custom
 express-sessions.json
-*.rdb
+Database

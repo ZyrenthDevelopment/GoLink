@@ -1,21 +1,16 @@
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
-import * as path from 'path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from "child_process";
-
-import { createClient } from 'redis';
 
 import axios from 'axios';
 
 import express from 'express';
 import { createServer } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 
 import session from 'express-session';
 import JSession from 'express-session-json';
-import { Socket } from "socket.io";
-import { listenerCount } from 'process';
+import { initDB } from './Utilities/Database.js';
+import { log } from './Utilities/Logger.js';
 const JsonStore = JSession(session);
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -28,53 +23,27 @@ const app = express();
 app.use(express.json());
 
 const httpServer = createServer(app);
-const io = new SocketIOServer(httpServer, {
-    cors: {
-        origin: 'http://192.168.8.206:8900',
-        methods: ['GET', 'POST'],
-    },
-});
 
 // Starting webserver and socket
 httpServer.listen(8900, () => {
     console.log(`Listening on port: 8900`);
 });
 
-io.listen(httpServer);
+const database = await initDB();
 
-/* const client = createClient({
-    database: 1
-});
+// await client.del('test');
 
-client.on('error', err => console.log('[Redis Client Error]', err));
+const startupCheckResult = await database.has('links', 'all');
 
-await client.connect();
-
-await client.hSet('test', {
-    'status': 'boring object'
-});
-
-const result = await client.hGetAll('test'); */
-
-const links = [
-    {
-        code: 'noauth',
-        type: 'none',
-        url: 'https://github.com/Zyrenth'
-    },
-    {
-        code: 'discord',
-        type: 'discord',
-        users: ['509018277549309962'],
-        url: 'https://github.com/Zyrenth'
-    },
-    {
-        code: 'password',
-        type: 'password',
-        password: 'psswrd',
-        url: 'https://github.com/Zyrenth'
-    }
-];
+if (!startupCheckResult) {
+    await database.create('links', 'all', {
+        'zyrenth': {
+            code: 'zyrenth',
+            type: 'none',
+            url: 'https://github.com/Zyrenth'
+        }
+    });
+}
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -90,6 +59,21 @@ app.use(session({
 
 app.get('/', isAuthenticated, (req, res, next) => {
     res.render(`${__dirname}/../views/page.ejs`, { access_token: req.session.user['access_token'], title: 'GoLink', description: 'Welcome to the GoLink homepage.' });
+});
+
+app.get('/admin', adminOnly, isAuthenticated, async (req, res, next) => {
+    const links = await database.get('links', 'all') as unknown as any;
+    delete links.id;
+
+    res.render(`${__dirname}/../views/dashboard.ejs`, { access_token: req.session.user['access_token'], id: 'None', views: [], links: Object.keys(links) });
+});
+
+app.get('/admin/:id', adminOnly, isAuthenticated, async (req, res, next) => {
+    const links = await database.get('links', 'all') as unknown as any;
+    delete links.id;
+    const link = links[req.params.id];
+
+    res.render(`${__dirname}/../views/dashboard.ejs`, { access_token: req.session.user['access_token'], id: link?.code ?? 'Unknown', views: link?.views ?? [], links: Object.keys(links) });
 });
 
 app.get('/account/login', async (req, res) => {
@@ -143,30 +127,126 @@ app.get('/account/auth', async (req, res, next) => {
     };
 });
 
-app.post('/api/v1/links', async (req, res) => {
+app.delete('/api/v1/link', endpoint, adminOnly, isAuthenticated, async (req, res) => {
     const body = req.body;
-    const link = links.find(x => x.code === body.id);
+    let links = await database.get('links', 'all') as unknown as any;
+    delete links.id;
+    
+    delete links[body.id];
+
+    await database.update('links', 'all', links);
+
+    return res.send({ success: true });
+});
+
+app.post('/api/v1/link', endpoint, adminOnly, isAuthenticated, async (req, res) => {
+    const body = req.body;
+    const links = await database.get('links', 'all') as unknown as any;
+    delete links.id;
+
+    if (!body.id || !body.type || !body.url) return res.status(400).send({ message: 'Some of the required fields are missing (id, type, url).' });
+
+    if (body.type === 'none') {
+        links[body.id] = {
+            code: body.id,
+            type: 'none',
+            url: body.url
+        };
+
+        await database.update('links', 'all', links);
+
+        return res.send({ success: true });
+    } else if (body.type === 'discord') {
+        links[body.id] = {
+            code: body.id,
+            type: 'discord',
+            users: body.users ?? [],
+            url: body.url
+        };
+
+        await database.update('links', 'all', links);
+
+        return res.send({ success: true });
+    } else if (body.type === 'password') {
+        links[body.id] = {
+            code: body.id,
+            type: 'password',
+            password: body.password,
+            url: body.url
+        };
+
+        await database.update('links', 'all', links);
+
+        return res.send({ success: true });
+    } else return res.status(400).send({ message: 'Invalid type.' });
+});
+
+app.post('/api/v1/links', endpoint, async (req, res) => {
+    const body = req.body;
+    const links = await database.get('links', 'all') as unknown as any;
+    delete links.id;
+    
+    const link = links[body.id];
 
     if (!link) return res.status(400).send({ message: 'GoLink not found.' });
     else {
         if (link.type !== body.type) return res.status(400).send({ message: 'Invalid type.' });
 
-        if (link.type === 'password') return link.password === body.password ? res.send({ url: link.url }) : res.status(200).send({ message: 'Invalid password.' });
-        else if (link.type === 'discord') {
+        if (link.type === 'password') {
+            if (!link.views) link.views = [];
+            link.views.push({
+                user: 'Anonymus',
+                result: link.password === body.password ? 0 : 1,
+                date: Date.now()
+            });
+
+            links[body.id] = link;
+            await database.update('links', 'all', links);
+
+            if (link.password === body.password) return res.send({ url: link.url })
+            else return res.status(200).send({ message: 'Invalid password.' });
+        } else if (link.type === 'discord') {
             if (!body.token) return res.status(200).send({ message: 'You don\'t have access to this GoLink.' });
 
             const profile = await getProfile(body.token);
 
+            if (!link.views) link.views = [];
+
+            link.views.push({
+                user: `${profile.global_name} | @${profile.username}${profile.discriminator === '0' ? '' : `#${profile.discriminator}`} (${profile.id})`,
+                result: link.users.includes(profile.id) ? 0 : 1,
+                date: Date.now()
+            });
+
+            links[body.id] = link;
+            await database.update('links', 'all', links);
+
             if (!link.users.includes(profile.id)) return res.status(200).send({ message: 'You don\'t have access to this GoLink.' });
 
             return res.send({ url: link.url });
-        } else return res.send({ url: link.url });
+        } else {
+            if (!link.views) link.views = [];
+            
+            link.views.push({
+                user: 'Anonymus',
+                result: 0,
+                date: Date.now()
+            });
+
+            links[body.id] = link;
+            await database.update('links', 'all', links);
+
+            return res.send({ url: link.url });
+        }
     }
 });
 
-app.get('/:id', (req, res, next) => {
+app.get('/:id', async (req, res, next) => {
     const id = req.params.id;
-    const link = links.find(x => x.code === id);
+    const links = await database.get('links', 'all') as unknown as any;
+    delete links.id;
+    
+    const link = links[id];
 
     if (!link) return next();
 
@@ -179,37 +259,16 @@ app.get('/:id', (req, res, next) => {
 });
 
 app.get('*', (req, res) => {
-    res.status(404).render(`${__dirname}/../views/page.ejs`, { title: `Server error`, description: `We can't seem to find ${req.params['0']} in this server, make sure you entered the correct url.` });
+    res.status(404).render(`${__dirname}/../views/page.ejs`, { access_token: req?.session?.user?.access_token ?? '', title: `Server error`, description: `We can't seem to find ${req.params['0']} in this server, make sure you entered the correct url.` });
 });
-
-// Socket event listeners
-io.use(async (socket, next) => {
-    if (socket.handshake.query && socket.handshake.query.token) {
-        const profile = await getProfile(socket.handshake.query.token);
-
-        if (profile === null) return socket.disconnect();
-
-        if (!config['admin_users'].includes(profile.id)) return socket.disconnect();
-
-        next();
-    } else {
-        socket.disconnect();
-    };
-}).on('connection', (socket: Socket) => {
-    // Discord OAuth profile
-    socket.on('get_profile', async () => {
-        socket.emit('get_profile', await getProfile(socket.handshake.query.token));
-    });
-
-    // Disconnect event
-    socket.on('disconnect', () => {
-        // log('Socket disconnected.');
-    });
-});
-
 
 async function adminOnly(req, res, next) {
     req['__limitedToAdmins'] = true;
+    next();
+}
+
+async function endpoint(req, res, next) {
+    req['__endpoint'] = true;
     next();
 }
 
@@ -220,11 +279,11 @@ async function isAuthenticated(req, res, next) {
     if (req.session.user) {
         const profile = await getProfile(req.session.user.access_token);
 
-        if (profile === null) return res.redirect(auth_url);
-        if (req['__limitedToAdmins'] && !config['admin_users'].includes(profile.id)) return res.redirect(auth_url);
+        if (profile === null) return req['__endpoint'] ? res.status(401).send() : res.redirect(auth_url);
+        if (req['__limitedToAdmins'] && !config['admin_users'].includes(profile.id)) return req['__endpoint'] ? res.status(403).send() : res.redirect(auth_url);
 
         next();
-    } else res.redirect(auth_url);
+    } else return req['__endpoint'] ? res.status(401).send() : res.redirect(auth_url);
 };
 
 // Get Discord profile based on OAuth token

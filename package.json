@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.js",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "database": "surreal start file://./Database -A --auth --user root --pass root"
   },
   "repository": {
     "type": "git",
@@ -28,8 +29,7 @@
     "express": "^4.18.2",
     "express-session": "^1.17.3",
     "express-session-json": "^0.0.8",
-    "redis": "^4.6.11",
-    "socket.io": "^4.7.2"
+    "surrealdb.js": "^0.11.0"
   },
   "devDependencies": {
     "@types/node": "^20.9.3"
