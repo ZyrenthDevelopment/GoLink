@@ -9,9 +9,10 @@ try {
 }
 
 await new Promise((resolve) => {
-    exec('tsc', (error) => {
+    exec('tsc', (error, out) => {
         if (error) {
             console.warn(`[Build]`, `Error while compiling TypeScript:`, error.message);
+            console.log(`[Build Debug]`, `tsc out debug:`, out);
             resolve(error);
             return;
         }
