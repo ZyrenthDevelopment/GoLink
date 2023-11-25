@@ -65,7 +65,7 @@ app.get('/admin', adminOnly, isAuthenticated, async (req, res, next) => {
     const links = await database.get('links', 'all') as unknown as any;
     delete links.id;
 
-    res.render(`${__dirname}/../views/dashboard.ejs`, { access_token: req.session.user['access_token'], id: 'None', views: [], links: Object.keys(links) });
+    res.render(`${__dirname}/../views/dashboard.ejs`, { access_token: req.session.user['access_token'], id: 'None', type: 'none', users: [], password: '', views: [], links: Object.keys(links) });
 });
 
 app.get('/admin/:id', adminOnly, isAuthenticated, async (req, res, next) => {
@@ -73,7 +73,7 @@ app.get('/admin/:id', adminOnly, isAuthenticated, async (req, res, next) => {
     delete links.id;
     const link = links[req.params.id];
 
-    res.render(`${__dirname}/../views/dashboard.ejs`, { access_token: req.session.user['access_token'], id: link?.code ?? 'Unknown', views: link?.views ?? [], links: Object.keys(links) });
+    res.render(`${__dirname}/../views/dashboard.ejs`, { access_token: req.session.user['access_token'], id: link?.code ?? 'Unknown', type: link?.type ?? 'none', users: link?.users ?? [], password: link?.password ?? '', views: link?.views ?? [], links: Object.keys(links) });
 });
 
 app.get('/account/login', async (req, res) => {
@@ -109,11 +109,6 @@ app.get('/account/auth', async (req, res, next) => {
             });
 
         const { access_token, token_type, refresh_token } = response.data;
-
-        //const profile = await getProfile(access_token);
-
-        // TODO: admin panel
-        // if (!config['admin_users'].includes(profile.id)) return res.render(`${__dirname}/../views/page.ejs`, { access_token, title: 'Account error', description: `Hello ${profile.global_name}, in order to access the following resource your account has to be an admin account or it has to be whitelisted.` });
 
         req.session.user = {
             access_token,
@@ -250,8 +245,20 @@ app.get('/:id', async (req, res, next) => {
 
     if (!link) return next();
 
-    if (link.type === 'none') return res.redirect(link.url);
-    else if (link.type === 'discord') {
+    if (link.type === 'none') {
+        if (!link.views) link.views = [];
+            
+        link.views.push({
+            user: 'Anonymus',
+            result: 0,
+            date: Date.now()
+        });
+
+        links[id] = link;
+        await database.update('links', 'all', links);
+
+        return res.redirect(link.url);
+    } else if (link.type === 'discord') {
         res.render(`${__dirname}/../views/login.ejs`, { loginType: 0, id, access_token: req?.session?.user?.access_token ?? '' });
     } else if (link.type === 'password') {
         res.render(`${__dirname}/../views/login.ejs`, { loginType: 1, id, access_token: '' });
@@ -277,10 +284,13 @@ async function isAuthenticated(req, res, next) {
     const auth_url = `https://discord.com/api/oauth2/authorize?client_id=${process.env['DISCORD_CLIENT_ID']}&redirect_uri=${encodeURIComponent(process.env['DISCORD_REDIRECT_URL'])}&response_type=code&scope=identify`;
 
     if (req.session.user) {
-        const profile = await getProfile(req.session.user.access_token);
+        const profile = await getProfile(req.session.user?.access_token);
 
         if (profile === null) return req['__endpoint'] ? res.status(401).send() : res.redirect(auth_url);
-        if (req['__limitedToAdmins'] && !config['admin_users'].includes(profile.id)) return req['__endpoint'] ? res.status(403).send() : res.redirect(auth_url);
+        if (req['__limitedToAdmins'] && !config['admin_users'].includes(profile.id)) {
+            if (req['__endpoint']) return res.status(403).send();
+            else return res.render(`${__dirname}/../views/page.ejs`, { access_token: req.session.user?.access_token ?? '', title: 'Account error', description: `Hello ${profile.global_name}, in order to access the following resource your account has to be an admin account.` });
+        }
 
         next();
     } else return req['__endpoint'] ? res.status(401).send() : res.redirect(auth_url);

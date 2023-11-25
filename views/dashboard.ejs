@@ -185,6 +185,8 @@
                     </div>
                 </div>
 
+                <div class="form-text">Type: <%= type %> <% if (type === 'discord') { %><br /> Allowed users: <%= (users ?? []).join(', ') %> <% } else if (type === 'password') { %> <br /> Password: <span style="user-select: none; background: black; color: black;" onclick="this.style.color === 'black' ? this.style.color = 'white' : this.style.color = 'black';"><%= password %></span> <% } %></div>
+
                 <h2>Access log</h2>
                 <div class="table-responsive small">
                     <table class="table table-striped table-sm">
