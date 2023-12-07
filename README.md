@@ -1,6 +1,8 @@
 # GoLink
 GoLink is another side-project by Zyrenth. It's a simple private link shortener, it has an admin panel that looks like it was made in 2010 and it shortens links I guess?
 
+<a href="https://github.com/Zyrenth"><img src="https://raw.githubusercontent.com/Zyrenth/Zyrenth/main/GitHub%20Projects%20Profile%20Link.png" /></a>
+
 # Database setup
 Install [SurrealDB](https://surrealdb.com) on your machine since this is the database this project is using.
 
