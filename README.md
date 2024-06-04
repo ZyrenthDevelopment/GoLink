@@ -1,3 +1,6 @@
+> [!IMPORTANT]  
+> the codebase is pretty shit and unmaintained. i recommend finding something else for link shortening
+
 # GoLink
 GoLink is another side-project by Zyrenth. It's a simple private link shortener, it has an admin panel that looks like it was made in 2010 and it shortens links I guess?
 
